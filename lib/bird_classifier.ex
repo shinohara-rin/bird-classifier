@@ -19,23 +19,20 @@ defmodule BirdClassifier do
   end
 
   def predict(self, image_path, opts \\ []) do
-    label_file = opts[:label_file]
-    top_k = opts[:top_k] || 3
-
     self = get_input_tensor(self)
     image = normalize_input_image(self, image_path)
     TFLiteElixir.TFLiteTensor.set_data(self.input_tensor, image.data)
-
     TFLiteElixir.Interpreter.invoke!(self.model)
-
     output = TFLiteElixir.Interpreter.output_tensor!(self.model, 0)
+    postprocess(output, opts)
+  end
 
-    output = Nx.from_binary(output, :u8)
-
+  def postprocess(softmax, opts) do
+    label_file = opts[:label_file]
+    top_k = opts[:top_k] || 3
+    output = Nx.from_binary(softmax, :u8)
     sorted_idx = Nx.argsort(output, direction: :desc)
-
     topk_idx = Nx.take(sorted_idx, Nx.iota({top_k}))
-
     to_label(topk_idx, label_file)
   end
 

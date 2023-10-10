@@ -1,4 +1,4 @@
-defmodule BirdClassifilerTest do
+defmodule BirdClassifierTest do
   use ExUnit.Case
-  doctest BirdClassifiler
+  doctest BirdClassifier
 end

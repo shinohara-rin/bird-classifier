@@ -1,25 +1,30 @@
-defmodule BirdClassifiler do
-  defstruct [:model]
+defmodule BirdClassifier do
+  defstruct [:model, :input_tensor]
 
   def load_model(model_path) do
     model = TFLiteElixir.Interpreter.new!(model_path)
-    %BirdClassifiler{model: model}
+    %BirdClassifier{model: model}
+  end
+
+  def get_input_tensor(self) do
+    [input_tensorn | _] = TFLiteElixir.Interpreter.inputs!(self.model)
+    tensor = TFLiteElixir.Interpreter.tensor(self.model, input_tensorn)
+    %BirdClassifier{self | input_tensor: tensor}
+  end
+
+  def normalize_input_image(self, image_path) do
+    image = StbImage.read_file!(image_path)
+    %TFLiteElixir.TFLiteTensor{shape: {_, h, w, _}} = self.input_tensor
+    StbImage.resize(image, h, w)
   end
 
   def predict(self, image_path, opts \\ []) do
-    image = StbImage.read_file!(image_path)
-    [input_tensorn | _] = TFLiteElixir.Interpreter.inputs!(self.model)
-
     label_file = opts[:label_file]
     top_k = opts[:top_k] || 3
 
-    tensor =
-      %TFLiteElixir.TFLiteTensor{shape: {_, h, w, _}} =
-      TFLiteElixir.Interpreter.tensor(self.model, input_tensorn)
-
-    image = StbImage.resize(image, h, w)
-
-    TFLiteElixir.TFLiteTensor.set_data(tensor, image.data)
+    self = get_input_tensor(self)
+    image = normalize_input_image(self, image_path)
+    TFLiteElixir.TFLiteTensor.set_data(self.input_tensor, image.data)
 
     TFLiteElixir.Interpreter.invoke!(self.model)
 
